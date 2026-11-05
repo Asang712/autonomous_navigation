@@ -18,5 +18,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# auto-watch test 11:50:55
