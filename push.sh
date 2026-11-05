@@ -201,31 +201,47 @@ main() {
       git status --short || true
       echo ""
       if git diff --quiet && git diff --cached --quiet; then
-        echo "✅ 没有可提交的改动，退出。"
-        exit 0
+        # 工作区干净，但本地可能还有 commit 没 push → 继续往下走
+        true
       fi
       local msg="$*"
-      if [[ -z "$msg" ]]; then
-        local timestamp changes
-        timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
-        changes="$(git diff --name-status HEAD 2>/dev/null | head -20 || true)"
-        msg="[$timestamp] 自动提交：${changes:-project files}"
-      fi
-      echo "📝 commit message: $msg"
-      git add -A
-      git commit -m "$msg"
-      local current_branch
+      local current_branch ahead_count
       current_branch="$(git rev-parse --abbrev-ref HEAD)"
-      echo "🚀 push $current_branch → origin ..."
-      if do_push "$current_branch"; then
-        echo ""
-        echo "🎉 推送成功！仓库地址：$REMOTE_URL"
+
+      # 1) 工作区有改动 → 先 commit
+      if ! git diff --quiet || ! git diff --cached --quiet; then
+        if [[ -z "$msg" ]]; then
+          local timestamp changes
+          timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+          changes="$(git diff --name-status HEAD 2>/dev/null | head -20 || true)"
+          msg="[$timestamp] 自动提交：${changes:-project files}"
+        fi
+        echo "📝 commit message: $msg"
+        git add -A
+        git commit -m "$msg"
       else
-        echo ""
-        echo "❌ 推送失败，常见原因："
-        echo "   - 没有登录 GitHub：gh auth login 或配置 SSH key"
-        echo "   - 远程有新提交：先 git pull --rebase origin $current_branch 再 push"
-        exit 1
+        echo "ℹ️  工作区干净，跳过 commit"
+      fi
+
+      # 2) 本地领先远程 → push（哪怕工作区干净）
+      ahead_count="$(git rev-list --count HEAD..origin/$current_branch 2>/dev/null || echo 0)"
+      # 注意 rev-list A..B 是 B 有 A 没有的，所以 HEAD..origin 是远程领先
+      # 我们要的是本地领先：origin..HEAD
+      ahead_count="$(git rev-list --count origin/$current_branch..HEAD 2>/dev/null || echo 0)"
+      if [[ "$ahead_count" -gt 0 ]]; then
+        echo "🚀 push $current_branch → origin ...（$ahead_count 个 commit 待推送）"
+        if do_push "$current_branch"; then
+          echo ""
+          echo "🎉 推送成功！仓库地址：$REMOTE_URL"
+        else
+          echo ""
+          echo "❌ 推送失败，常见原因："
+          echo "   - 没有登录 GitHub：gh auth login 或配置 SSH key"
+          echo "   - 远程有新提交：先 git pull --rebase origin $current_branch 再 push"
+          exit 1
+        fi
+      else
+        echo "✅ 本地与 origin/$current_branch 同步，无需 push。"
       fi
       ;;
   esac
