@@ -1,0 +1,45 @@
+# ===== ROS 2 / colcon 生成物 =====
+build/
+install/
+log/
+*.install/
+
+# ===== Gazebo / Ignition 运行时产物 =====
+.gazebo/
+.ignition/
+
+# ===== Python =====
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# ===== 系统与编辑器 =====
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ===== 日志与临时文件 =====
+*.log
+*.tmp
+*.bak
+.cache/
+
+# ===== 下载 / 大文件 =====
+*.zip
+*.tar.gz
+*.pkl
+*.npy
+*.hdf5
+*.bag/
+*.db3
+
+# ===== 本地环境脚本（可能含私有路径/密钥） =====
+.local.sh
+.local/
